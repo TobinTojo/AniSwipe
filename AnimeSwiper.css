@@ -1,0 +1,660 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+
+.swiper-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 600px;
+}
+
+#hero-title {
+  margin-bottom: 100px;
+}
+
+.anime-card {
+  position: absolute;
+  background-color: #1f1f1f;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 320px;  /* Adjusted width */
+  height: 750px;
+  margin-bottom: 20px;
+  padding-bottom: 10px; /* Add some padding at bottom */
+}
+
+.poster {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;  /* Ensures the image fits without distortion */
+  display: block;
+  border-bottom: 1px solid #333;
+}
+
+.anime-info {
+  padding: 16px;
+  text-align: left;
+  height: 180px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* This will push content to top and bottom */
+}
+
+.anime-info h2 {
+  font-size: 1.25rem;
+  margin: 0 0 10px;
+  color: #f9f9f9;
+}
+
+.anime-info p {
+  font-size: 0.95rem;  /* Slightly increased font size for readability */
+  color: #ccc;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;  /* Ensures long text doesn't overflow */
+  margin-bottom: 12px; /* Add space between synopsis and button */
+  flex-grow: 1; /* Allow synopsis to take available space */
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #1a1a1a;
+  position: relative;
+  z-index: 2;
+}
+
+.btn {
+  font-size: 1.5rem;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-left {
+  background-color: #ff4d4d;
+  color: white;
+}
+
+.btn-left:hover {
+  background-color: #e03e3e;
+  transform: scale(1.05);
+}
+
+.btn-right {
+  background-color: #4caf50;
+  color: white;
+}
+
+.btn-right:hover {
+  background-color: #3e8e41;
+  transform: scale(1.05);
+}
+
+.dragging {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  transform: scale(1.02);
+}
+
+.swipe-left {
+  transform: translateX(-100px) rotate(-10deg);
+  opacity: 0.7;
+  background-color: rgba(255, 0, 0, 0.1);
+}
+
+.swipe-right {
+  transform: translateX(100px) rotate(10deg);
+  opacity: 0.7;
+  background-color: rgba(0, 255, 0, 0.1);
+}
+
+.swipe-hint {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+  padding: 0 20px;
+}
+
+.swipe-hint span {
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.swipe-hint .active {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.swipe-feedback {
+  position: absolute;
+  top: 50%;
+  font-size: 2rem;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  padding: 15px 25px;
+  border-radius: 50px;
+  transition: opacity 0.3s ease;
+}
+
+
+.swipe-feedback.like {
+  right: 20px;
+  background: rgba(76, 175, 80, 0.9);
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.swipe-feedback.dislike {
+  left: 20px;
+  background: rgba(244, 67, 54, 0.9);
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+
+.swipe-feedback.show {
+  opacity: 1;
+}
+
+.details-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.details-popup {
+  background: #1f1f1f;
+  border-radius: 16px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #333;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: #ccc;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #444;
+  color: white;
+  transform: rotate(90deg);
+}
+
+.popup-content {
+  display: flex;
+  gap: 30px;
+}
+
+.popup-poster {
+  width: 220px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+  height: 320px;
+}
+
+.popup-info {
+  flex: 1;
+  color: #f9f9f9;
+}
+
+.popup-info h2 {
+  margin-top: 0;
+  font-size: 1.8rem;
+  color: white;
+  margin-bottom: 10px;
+}
+
+.popup-info .rating {
+  display: none; /* Hide the duplicate rating */
+}
+
+.rating, .genres {
+  margin: 15px 0;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.rating {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.genres {
+  margin-left: 10px;
+  background: rgba(100, 149, 237, 0.2);
+  color: #6495ed;
+}
+
+.synopsis, .similar {
+  margin: 20px 0;
+}
+
+.synopsis h3, .similar h3 {
+  font-size: 1.2rem;
+  color: #f9f9f9;
+  margin-bottom: 8px;
+  position: relative;
+  display: inline-block;
+}
+
+.synopsis h3::after, .similar h3::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 50px;
+  height: 2px;
+  background: linear-gradient(90deg, #4caf50, transparent);
+}
+
+.synopsis p {
+  margin-top: 10px;
+  line-height: 1.6;
+  color: #ccc;
+}
+
+.similar p {
+  color: #aaa;
+  font-style: italic;
+}
+
+.details-btn {
+  background: linear-gradient(135deg, #4a4a4a 0%, #2e2e2e 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 30px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px; /* Ensure space between button and swipe hint */
+  align-self: flex-start; /* Keep button aligned left */
+}
+
+.details-btn::after {
+  content: '→';
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.details-btn:hover {
+  background: linear-gradient(135deg, #5a5a5a 0%, #3e3e3e 100%);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.details-btn:hover::after {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+.details-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.details-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.details-btn:disabled:hover::after {
+  opacity: 0;
+}
+
+
+/* Scrollbar styling */
+.details-popup::-webkit-scrollbar {
+  width: 8px;
+}
+
+.details-popup::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 0 16px 16px 0;
+}
+
+.details-popup::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.details-popup::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Add to AnimeSwiper.css */
+.meta-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 15px 0;
+}
+
+.meta-item {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-item::before {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.streamers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.streamer-btn {
+  background: rgba(100, 149, 237, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6495ed;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.streamer-btn:hover {
+  background: rgba(100, 149, 237, 0.3);
+  transform: translateY(-2px);
+}
+
+.streamer-btn:active {
+  transform: translateY(0);
+}
+
+/* Platform-specific colors */
+.crunchyroll-btn {
+  background: rgba(244, 117, 33, 0.2);
+  color: #f47521;
+}
+
+.crunchyroll-btn:hover {
+  background: rgba(244, 117, 33, 0.3);
+}
+
+.netflix-btn {
+  background: rgba(229, 9, 20, 0.2);
+  color: #e50914;
+}
+
+.netflix-btn:hover {
+  background: rgba(229, 9, 20, 0.3);
+}
+
+.hidive-btn {
+  background: rgba(0, 161, 222, 0.2);
+  color: #00a1de;
+}
+
+.hidive-btn:hover {
+  background: rgba(0, 161, 222, 0.3);
+}
+
+.streamer-item i {
+  font-size: 0.9rem;
+}
+
+.popup-section {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.age-rating::before {
+  content: "👤";
+}
+
+.popularity::before {
+  content: "🔢";
+}
+
+.episodes::before {
+  content: "🎬";
+}
+
+.calendar::before {
+  content: "📅";
+}
+
+.rating-star::before {
+  content: "⭐";
+}
+
+.swiper-container {
+  margin-top: 100px;
+  min-height: 100vh;  /* Make it full viewport height */
+  padding: 2rem 0;
+  scroll-margin-top: 80px; /* Prevent header overlap */
+}
+
+/* Add smooth transition for when the swiper appears */
+.swiper-container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.similar ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+
+.similar li {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.similar li:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(5px);
+}
+
+.similar a {
+  color: #90caf9;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.similar a:hover {
+  text-decoration: underline;
+}
+
+/* Add to AnimeSwiper.css */
+.details-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 1001;
+}
+
+.details-loading-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #4caf50, #2196f3);
+  animation: loadingBar 1.5s ease-in-out infinite;
+  border-radius: 0 2px 2px 0;
+}
+
+.details-loading.hiding {
+  opacity: 0;
+}
+
+@keyframes loadingBar {
+  0% {
+    width: 0;
+    transform: translateX(0);
+  }
+  50% {
+    width: 80%;
+    transform: translateX(0);
+  }
+  100% {
+    width: 100%;
+    transform: translateX(100%);
+  }
+}
+
+.history-controls {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.history-btn {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.history-btn:hover {
+  background: #444;
+}
+
+@media (max-width: 600px) {
+  .swiper-container {
+    padding: 16px;
+    min-height: 80vh;
+  }
+
+  .anime-card {
+    width: 80%;
+    height: auto;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+  }
+
+  .poster {
+    height: 240px;
+  }
+
+  .anime-info {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  .anime-info h2 {
+    font-size: 1.1rem; 
+    margin-bottom: 8px;
+  }
+
+  .anime-info p {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .details-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+
+  .details-overlay .details-popup {
+    width: 95%;
+    max-width: 400px;
+    padding: 20px;
+  }
+
+  .popup-content {
+    flex-direction: column;
+  }
+
+  .popup-poster {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 16px;
+  }
+
+  .popup-info {
+    padding: 12px;
+  }
+
+  .popup-info h2 {
+    font-size: 1.4rem;
+    text-align: center;
+  }
+}
