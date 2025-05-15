@@ -21,7 +21,7 @@ const characters = useAnimeCharacters();
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 100 }}
         >
-          AnimeSwipe
+          AniSwipe
         </motion.h1>
         <motion.p 
           className="hero-subtitle"

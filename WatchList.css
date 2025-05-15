@@ -1,0 +1,250 @@
+/* WatchList.css */
+.watch-list-overlay {
+  position: fixed;
+  top: 0;
+  left: -15;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  pointer-events: auto;
+  padding: 20px;
+}
+
+.watch-list-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  height: 70vh;
+  overflow-y: auto;
+  position: relative;
+  border: 1px solid #1e2d3b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  margin: auto;
+  color: #ecf0f1;
+}
+
+.watch-list-container h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #ffffff, #d1d5db);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #333;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: #ccc;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: #444;
+  color: white;
+  transform: rotate(90deg);
+}
+
+.anime-grid-container {
+  max-height: calc(70vh - 100px);
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+
+.anime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+  padding: 0.5rem;
+}
+
+.watchlist-card {
+  background: #2c3e50; /* Dark grey with blue undertones */
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.watchlist-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.watchlist-card .poster {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-bottom: 2px solid #1e2d3b;
+}
+
+.watchlist-card .anime-info {
+  padding: 16px;
+  text-align: center;
+}
+
+.watchlist-card .anime-info h2 {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #f39c12; /* Warm yellow for contrast */
+  font-weight: bold;
+}
+
+.watchlist-card .anime-info p {
+  font-size: 0.9rem;
+  color: #ecf0f1;
+  margin: 10px 0;
+  line-height: 1.4;
+  height: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.watchlist-card .details-btn {
+  background: #e74c3c; /* Red button for emphasis */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin-right: auto;
+  margin-left: auto;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.3s ease;
+  margin-top: 10px;
+}
+
+.watchlist-card .details-btn:hover {
+  background: #c0392b;
+  transform: translateY(-2px);
+}
+
+/* Mobile Styling for Watchlist Cards */
+@media (max-width: 600px) {
+  .watch-list-overlay {
+    padding: 10px;
+  }
+
+  .watch-list-container {
+    padding: 1.5rem;
+    width: 70%;
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .anime-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .watchlist-card {
+    width: 100%;
+    height: auto;
+  }
+
+  .watchlist-card .poster {
+    height: 220px;
+  }
+
+  .watchlist-card .anime-info {
+    padding: 12px;
+  }
+
+  .watchlist-card .anime-info h2 {
+    font-size: 1.1rem;
+  }
+
+  .watchlist-card .anime-info p {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .watchlist-card .details-btn {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+}
+.watch-list-details-overlay {
+  position: absolute; /* Removed fixed positioning */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center; /* Horizontally center the popup */
+  align-items: center;     /* Vertically center the popup */
+  z-index: 1000;
+  backdrop-filter: blur(5px); /* Smooth background blur */
+  padding: 20px;
+  height: 100vh; /* Take up the full height of the viewport */
+  width: 100vw;  /* Take up the full width of the viewport */
+}
+
+/* Details Popup - Centered content */
+.watch-list-details-popup {
+  background: #1f1f1f;
+  border-radius: 16px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  height: auto;             /* Allow the height to be dynamic */
+  overflow-y: auto;         /* Enable vertical scrolling when content overflows */
+  position: relative;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;  /* Ensure content starts from top */
+  align-items: center; /* Center the content inside the popup */
+  overflow: hidden;
+}
+
+/* Content inside the popup */
+.watch-list-popup-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;  /* Center the elements horizontally */
+  gap: 20px;            /* Space between the content sections */
+  width: 100%;
+  max-height: 80vh;      /* Limit height for better responsiveness */
+  overflow-y: auto;      /* Allow scrolling if the content overflows */
+}
+
+.watch-list-popup-poster {
+  width: 220px;
+  height: 320px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+}
+
+.watch-list-popup-info {
+  color: #f9f9f9;
+  text-align: center;
+  flex: 1;
+  max-width: 100%; /* Ensure the text area doesn’t overflow */
+}

@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import '../Navbar.css';
-
+import WatchList from './WatchList';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,9 +27,10 @@ const Navbar = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false); // Renamed to be more specific
+  const [authLoading, setAuthLoading] = useState(false);
+  const [showWatchList, setShowWatchList] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'Users', user.uid));
@@ -45,6 +46,12 @@ const Navbar = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const calculateFontSize = () => {
+    if (username.length < 5) return '1.6rem'; // Larger font for short usernames
+    if (username.length < 10) return '1.4rem'; // Medium font for mid-length usernames
+    return '1.2rem'; // Smaller font for long usernames
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -111,17 +118,24 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <div className="navbar-logo">
-          AnimeSwipe
+        <div className="navbar-logo" style={{ fontSize: window.innerWidth <= 768 && user ? calculateFontSize() : '1.6rem' }}>
+          {user && window.innerWidth <= 768 ? username : "AniSwipe"}
         </div>
+
 
         <div className="navbar-links">
           {user ? (
             <>
+              <button 
+                onClick={() => setShowWatchList(true)}
+                className="watch-list-btn"
+              >
+                My Watch List
+              </button>
               <span className="navbar-username">Welcome, {username || user.email}</span>
               <button 
                 onClick={handleLogout} 
-                className="hero-btn secondary"
+                className="navbar-btn secondary"
                 disabled={authLoading}
               >
                 {authLoading ? '...' : 'Logout'}
@@ -131,6 +145,7 @@ const Navbar = () => {
             <button 
               onClick={() => setShowAuthModal(true)} 
               className="hero-btn primary"
+              id="login-btn"
             >
               Login / Sign Up
             </button>
@@ -216,6 +231,9 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+      {showWatchList && (
+        <WatchList onClose={() => setShowWatchList(false)} />
+      )}
     </nav>
   );
 };
