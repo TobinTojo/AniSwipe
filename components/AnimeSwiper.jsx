@@ -4,9 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import '../AnimeSwiper.css';
 import StreamingPlatforms from './StreamingPlatforms.jsx';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { auth, db } from './Navbar';
-import { Undo2 } from 'lucide-react';
 
 function parseJsonFromText(text) {
   const match = text.match(/\{[\s\S]*\}/);
@@ -16,11 +15,9 @@ function parseJsonFromText(text) {
   return JSON.parse(text);
 }
 
-function AnimeSwiper() {
+function AnimeSwiper({ hasCompletedPreferences }) {
    const [animeList, setAnimeList] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipeHistory, setSwipeHistory] = useState([]);
-  const [undoUsed, setUndoUsed] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -44,79 +41,147 @@ function AnimeSwiper() {
   const [initialSwipeDir, setInitialSwipeDir] = useState(null);
 
 
+
   // Fetch initial anime on load
-  const fetchInitialAnime = async (user) => {
-    try {
-      if (user) {
-        const userRef = doc(db, 'Users', user.uid);
-        const docSnap = await getDoc(userRef);
+ const fetchInitialAnime = async (user) => {
+  setIsLoading(true);
+  try {
+    const userRef = doc(db, 'Users', user.uid);
+    const docSnap = await getDoc(userRef);
 
-        let preferences = { likes: [], dislikes: [] };
-        let ratedAnimeIds = [];
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          preferences = { likes: data.likes || [], dislikes: data.dislikes || [] };
-          ratedAnimeIds = [
-            ...preferences.likes.map(like => like.id),
-            ...preferences.dislikes.map(dislike => dislike.id)
-          ];
-        }
-
-        if (preferences.likes.length > 0 || preferences.dislikes.length > 0) {
-          await getPersonalizedRecommendation(preferences, ratedAnimeIds);
-        } else {
-          await fetchRandomAnime(ratedAnimeIds);
-        }
-      } else {
-        await fetchRandomAnime([]);
-      }
-    } catch (error) {
-      console.error('Error fetching initial anime:', error);
-      await fetchRandomAnime([]);
-    } finally {
-      setIsLoading(false);
+    let preferences = { likes: [], dislikes: [] };
+    let ratedAnimeIds = [];
+    let userPreferences = {};
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      preferences = { likes: data.likes || [], dislikes: data.dislikes || [] };
+      ratedAnimeIds = [
+        ...preferences.likes.map(like => like.id),
+        ...preferences.dislikes.map(dislike => dislike.id)
+      ];
+      userPreferences = data.preferences || {};
     }
-  };
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (user) {
-        setIsUserLoggedIn(true);
-        fetchInitialAnime(user);
-      } else {
-        setIsUserLoggedIn(false);
-        setAnimeList([]);
-        setCurrentIndex(0);
+    if (preferences.likes.length > 0 || preferences.dislikes.length > 0) {
+      await getPersonalizedRecommendation(preferences, ratedAnimeIds);
+    } else if (userPreferences.favoriteAnimes?.length > 0 || userPreferences.favoriteGenres?.length > 0) {
+      await getInitialRecommendation(userPreferences, ratedAnimeIds);
+    } else {
+      await fetchRandomAnime(ratedAnimeIds);
+    }
+  } catch (error) {
+    console.error('Error fetching initial anime:', error);
+    await fetchRandomAnime([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// Add this new function to AnimeSwiper.jsx
+const getInitialRecommendation = async (preferences, ratedAnimeIds) => {
+  setIsLoading(true);
+  const tried = new Set();
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const favoriteAnimes = preferences.favoriteAnimes?.join(', ') || 'none';
+      const favoriteGenres = preferences.favoriteGenres?.join(', ') || 'any';
+
+      const prompt = `Recommend exactly one anime that:
+1. Matches the user's favorite genres: ${favoriteGenres}
+2. Is similar to the user's favorite anime: ${favoriteAnimes}
+3. Is in the Kitsu.io database
+Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's preferences" }`;
+
+      const result = await model.generateContent([prompt]);
+      const raw = result.response.text().trim();
+      let rec;
+      try {
+        rec = parseJsonFromText(raw);
+      } catch (err) {
+        console.error('Failed to parse recommendation JSON:', raw);
+        rec = { title: raw, reason: '' };
       }
-    });
-    return () => unsubscribe();
-  }, []);
+      tried.add(rec.title);
+
+      const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
+      const searchData = await searchRes.json();
+      const filtered = searchData.data.filter(a => !ratedAnimeIds.includes(a.id));
+
+      if (filtered.length) {
+        setAnimeList([{ ...filtered[0], explanation: rec.reason }]);
+        setCurrentIndex(0);
+        break;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  setIsLoading(false);
+};
+
+useEffect(() => {
+  const unsubscribe = auth.onAuthStateChanged(async user => {
+    if (user) {
+      setIsUserLoggedIn(true);
+
+      // Fetch user preferences regardless of session state
+      const userRef = doc(db, 'Users', user.uid);
+      const docSnap = await getDoc(userRef);
+      const userData = docSnap.exists() ? docSnap.data() : {};
+
+      const hasPrefs =
+        (userData.preferences?.favoriteAnimes?.length > 0 ||
+        userData.preferences?.favoriteGenres?.length > 0) ||
+        (userData.likes?.length > 0 || userData.dislikes?.length > 0);
+
+      if (hasCompletedPreferences || hasPrefs) {
+        fetchInitialAnime(user);
+      }
+    } else {
+      setIsUserLoggedIn(false);
+      setAnimeList([]);
+      setCurrentIndex(0);
+    }
+  });
+  return () => unsubscribe();
+}, [hasCompletedPreferences]);
+
+
 
   const fetchRandomAnime = async (ratedAnimeIds) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('https://kitsu.io/api/edge/anime?page[limit]=10&sort=-user_count');
-      const data = await res.json();
-      
-      // Filter out rated anime
-      const unratedAnime = data.data.filter(anime => 
-        !ratedAnimeIds.includes(anime.id)
-      );
-      
-      if (unratedAnime.length > 0) {
-        setAnimeList(unratedAnime);
-        setCurrentIndex(0);
-      } else {
-        // If all are rated, just show the first one
-        setAnimeList([data.data[0]]);
-        setCurrentIndex(0);
-      }
-    } catch (error) {
-      console.error('Error fetching random anime:', error);
-    } finally {
-      setIsLoading(false);
+  setIsLoading(true);
+  try {
+    // 1) Find total number of anime
+    const totalRes = await fetch('https://kitsu.io/api/edge/anime');
+    const { count: total } = (await totalRes.json()).meta;
+
+    // 2) Pick a random offset
+    const offset = Math.floor(Math.random() * total);
+
+    // 3) Fetch one at that offset
+    const randomRes = await fetch(
+      `https://kitsu.io/api/edge/anime?page[limit]=1&page[offset]=${offset}`
+    );
+    const { data } = await randomRes.json();
+    const candidate = data[0];
+
+    // 4) If it’s already rated, retry or fall back
+    if (ratedAnimeIds.includes(candidate.id)) {
+      return fetchRandomAnime(ratedAnimeIds);
     }
-  };
+
+    setAnimeList([candidate]);
+    setCurrentIndex(0);
+
+  } catch (error) {
+    console.error('Error fetching truly random anime:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
    const getPersonalizedRecommendation = async (preferences, ratedAnimeIds) => {
     setIsLoading(true);
@@ -187,7 +252,6 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
     const dislikedTitles = latest.dislikes.map(d => d.title).join(', ') || 'none';
 
     const tried = new Set();
-    let gotOne = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
       const prompt = `Recommend exactly one anime that:
@@ -218,21 +282,10 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
         if (candidates.length) {
           setAnimeList(prev => [...prev, { ...candidates[0], explanation: rec.reason }]);
           setCurrentIndex(prev => prev + 1);
-          gotOne = true;
           break;
         }
       } catch (err) {
         console.error('Error during retry attempt:', err);
-      }
-    }
-    if (!gotOne) {
-      if (depth < 2) {
-        console.warn(`Gemini came up empty; retrying (depth=${depth+1})…`);
-        // recursively call yourself once more
-        await getGeminiRecommendedAnime(currentAnime, action, depth + 1);
-      } else {
-        console.error('Gemini still couldn’t find a new anime after 3 tries.');
-        // Optionally: show a UI message “no recommendation available”
       }
     }
 
@@ -240,71 +293,51 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
   };
 
 
-const handleSwipe = async (direction) => {
-    const current = animeList[currentIndex];
-    // Build the entry exactly as added to Firestore
-    const entry = {
-      id: current.id,
-      title: current.attributes.canonicalTitle,
-      image: current.attributes.posterImage?.medium,
-      timestamp: new Date().toISOString()
-    };
-    // Record history for undo
-    setSwipeHistory(prev => [...prev, { entry, direction }]);
-    setUndoUsed(false); // ✅ allow undo after a swipe
-
+   const handleSwipe = async (direction) => {
+    const currentAnime = animeList[currentIndex];
     setSwipeDirection(direction);
     setIsDragging(false);
     setActiveSwipe(direction);
     setShowFeedback(true);
 
-    // Save like/dislike to Firestore
+    // Save to Firebase
     try {
       const user = auth.currentUser;
       if (user) {
         const userRef = doc(db, 'Users', user.uid);
+        
         if (direction === 'right') {
-          await updateDoc(userRef, { likes: arrayUnion(entry) });
+          await updateDoc(userRef, {
+            likes: arrayUnion({
+              id: currentAnime.id,
+              title: currentAnime.attributes.canonicalTitle,
+              image: currentAnime.attributes.posterImage?.medium,
+              timestamp: new Date().toISOString()
+            })
+          });
         } else {
-          await updateDoc(userRef, { dislikes: arrayUnion(entry) });
+          await updateDoc(userRef, {
+            dislikes: arrayUnion({
+              id: currentAnime.id,
+              title: currentAnime.attributes.canonicalTitle,
+              image: currentAnime.attributes.posterImage?.medium,
+              timestamp: new Date().toISOString()
+            })
+          });
         }
       }
-    } catch (e) {
-      console.error('Error saving swipe:', e);
+    } catch (error) {
+      console.error('Error saving swipe:', error);
     }
 
+    // Show feedback for 500ms before transitioning
     setTimeout(() => {
       setShowFeedback(false);
       setActiveSwipe(null);
       setSwipeDirection(null);
-      getGeminiRecommendedAnime(current, direction);
+      getGeminiRecommendedAnime(currentAnime, direction);
     }, 500);
   };
-
-   const handleUndo = async () => {
-    if (undoUsed || swipeHistory.length === 0) return; // 🚫 prevent repeat undo
-    const last = swipeHistory[swipeHistory.length - 1];
-    const { entry, direction } = last;
-    try {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, 'Users', user.uid);
-        if (direction === 'right') {
-          await updateDoc(userRef, { likes: arrayRemove(entry) });
-        } else {
-          await updateDoc(userRef, { dislikes: arrayRemove(entry) });
-        }
-      }
-    } catch (e) {
-      console.error('Error undoing swipe:', e);
-    }
-    // Remove last recommendation and go back
-    setAnimeList(prev => prev.slice(0, -1));
-    setCurrentIndex(prev => Math.max(prev - 1, 0));
-    setSwipeHistory(prev => prev.slice(0, -1));
-    setUndoUsed(true); // 🔒 block future undo until next swipe
-  };
-
 
 
 const swipeHandlers = useSwipeable({
@@ -492,21 +525,8 @@ const swipeHandlers = useSwipeable({
                     </div>
                     <div className="buttons">
                       <button onClick={() => handleSwipe('left')} className="btn btn-left">👎</button>
-                      <div className="btn btn-undo-wrapper">
-                        {currentIndex > 0 && (
-                        <button
-                          className={`btn btn-undo ${undoUsed ? 'disabled' : ''}`}
-                          onClick={handleUndo}
-                          disabled={undoUsed}
-                          title={undoUsed ? 'You can only undo once per swipe.' : 'Undo last swipe'}
-                        >
-                          <Undo2 size={20} />
-                        </button>
-                      )}
-                      </div>
                       <button onClick={() => handleSwipe('right')} className="btn btn-right">👍</button>
                     </div>
-
                   </motion.div>
                 </>
               )}

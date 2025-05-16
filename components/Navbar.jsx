@@ -4,6 +4,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import '../Navbar.css';
 import WatchList from './WatchList';
+import PreferencesModal from './PreferencesModal';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const Navbar = () => {
+const Navbar = ({ onPreferencesComplete }) => {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +32,8 @@ const Navbar = () => {
   const [showWatchList, setShowWatchList] = useState(false);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [showPreferences, setShowPreferences] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -57,36 +60,38 @@ const Navbar = () => {
   };
 
   const handleAuth = async (e) => {
-    e.preventDefault();
-    setError('');
-    setAuthLoading(true);
+  e.preventDefault();
+  setError('');
+  setAuthLoading(true);
 
-    if (!email || !password) {
-      setError('Email and password are required');
-      setAuthLoading(false);
-      return;
+  if (!email || !password) {
+    setError('Email and password are required');
+    setAuthLoading(false);
+    return;
+  }
+
+  if (!isLogin && !username) {
+    setError('Username is required');
+    setAuthLoading(false);
+    return;
+  }
+
+  try {
+    if (isLogin) {
+      await signInWithEmailAndPassword(auth, email, password);
+    } else {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'Users', userCredential.user.uid), {
+        username: username,
+        email: email,
+        likes: [],
+        dislikes: [],
+        createdAt: new Date().toISOString()
+      });
+      // Show preferences modal only for new signups
+      setShowPreferences(true);
     }
-
-    if (!isLogin && !username) {
-      setError('Username is required');
-      setAuthLoading(false);
-      return;
-    }
-
-    try {
-      if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, 'Users', userCredential.user.uid), {
-          username: username,
-          email: email,
-          likes: [],
-          dislikes: [],
-          createdAt: new Date().toISOString()
-        });
-      }
-      setShowAuthModal(false);
+    setShowAuthModal(false);
     } catch (err) {
       const errorMessages = {
         'auth/invalid-email': 'Invalid email address',
@@ -252,6 +257,19 @@ const Navbar = () => {
       {showWatchList && (
         <WatchList onClose={() => setShowWatchList(false)} />
       )}
+  {showPreferences && (
+  <PreferencesModal 
+    onComplete={() => {
+      setShowPreferences(false);
+      if (typeof onPreferencesComplete === 'function') {
+        onPreferencesComplete();
+      }
+    }} 
+    isOpen={showPreferences} 
+  />
+)}
+
+
     </nav>
   );
 };
