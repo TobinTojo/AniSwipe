@@ -24,7 +24,7 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 320px;  /* Adjusted width */
-  height: 750px;
+  height: 800px;
   margin-bottom: 20px;
   padding-bottom: 10px; /* Add some padding at bottom */
 }
@@ -40,11 +40,48 @@
 .anime-info {
   padding: 16px;
   text-align: left;
-  height: 180px;
-  overflow: hidden;
+   height: 250px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between; /* This will push content to top and bottom */
+}
+
+.explanation {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  color: #ddd;
+  overflow-y: auto;
+  max-height: 150px; /* Limit height and add scroll if needed */
+}
+
+.explanation-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.explanation-title {
+  font-size: 0.8rem;
+  color: #4caf50;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+/* Add scrollbar styling for the explanation */
+.explanation::-webkit-scrollbar {
+  width: 4px;
+}
+
+.explanation::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.explanation::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
 .anime-info h2 {
@@ -303,7 +340,7 @@
   background: linear-gradient(135deg, #4a4a4a 0%, #2e2e2e 100%);
   color: white;
   border: none;
-  padding: 10px 24px;
+  padding: 20px 24px;
   border-radius: 30px;
   cursor: pointer;
   margin-top: 12px;
@@ -562,6 +599,31 @@
   opacity: 0;
 }
 
+.loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 999;
+}
+
+.loading-spinner {
+  border: 6px solid rgba(255, 255, 255, 0.2);
+  border-top: 6px solid #4caf50;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
 @keyframes loadingBar {
   0% {
     width: 0;
@@ -628,8 +690,13 @@
     line-height: 1.4;
   }
 
+  .explanation {
+    max-height: 20vh;
+  }
+
+
   .details-btn {
-    padding: 8px 16px;
+    padding: 16px 16px;
     font-size: 0.85rem;
   }
 
