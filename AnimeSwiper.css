@@ -336,6 +336,40 @@
   font-style: italic;
 }
 
+.btn-undo-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10px;
+}
+
+.btn-undo {
+  background-color: #555;
+  color: white;
+  font-size: 2rem;       
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-undo:hover {
+  background-color: #666;
+  transform: scale(1.05);
+}
+
+.btn-undo.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+
+
+
+
 .details-btn {
   background: linear-gradient(135deg, #4a4a4a 0%, #2e2e2e 100%);
   color: white;

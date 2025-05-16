@@ -29,8 +29,10 @@ const Navbar = () => {
   const [error, setError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [showWatchList, setShowWatchList] = useState(false);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
- useEffect(() => {
+  useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'Users', user.uid));
@@ -42,15 +44,16 @@ const Navbar = () => {
         setUser(null);
         setUsername('');
       }
+      setIsUserLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   const calculateFontSize = () => {
-    if (username.length < 5) return '1.6rem'; // Larger font for short usernames
-    if (username.length < 10) return '1.4rem'; // Medium font for mid-length usernames
-    return '1.2rem'; // Smaller font for long usernames
+    if (username.length < 5) return '1.6rem';
+    if (username.length < 10) return '1.4rem';
+    return '1.2rem';
   };
 
   const handleAuth = async (e) => {
@@ -122,19 +125,22 @@ const Navbar = () => {
           {user && window.innerWidth <= 768 ? username : "AniSwipe"}
         </div>
 
-
         <div className="navbar-links">
-          {user ? (
+          {isUserLoading ? (
+            <div className="navbar-loading">
+              <div className="navbar-spinner"></div>
+            </div>
+          ) : user ? (
             <>
-              <button 
+              <button
                 onClick={() => setShowWatchList(true)}
                 className="watch-list-btn"
               >
                 My Watch List
               </button>
               <span className="navbar-username">Welcome, {username || user.email}</span>
-              <button 
-                onClick={handleLogout} 
+              <button
+                onClick={handleLogout}
                 className="navbar-btn secondary"
                 disabled={authLoading}
               >
@@ -142,8 +148,8 @@ const Navbar = () => {
               </button>
             </>
           ) : (
-            <button 
-              onClick={() => setShowAuthModal(true)} 
+            <button
+              onClick={() => setShowAuthModal(true)}
               className="hero-btn primary"
               id="login-btn"
             >
@@ -155,8 +161,8 @@ const Navbar = () => {
 
       <div className={`auth-modal ${showAuthModal ? 'active' : ''}`}>
         <div className="auth-modal-content">
-          <button 
-            className="close-modal" 
+          <button
+            className="close-modal"
             onClick={() => {
               setShowAuthModal(false);
               setError('');
@@ -167,7 +173,7 @@ const Navbar = () => {
           </button>
 
           <h2>{isLogin ? 'Login' : 'Sign Up'}</h2>
-          
+
           {error && <div className="auth-error">{error}</div>}
 
           <form onSubmit={handleAuth}>
@@ -185,15 +191,26 @@ const Navbar = () => {
 
             <div className="form-group">
               <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength="6"
-                placeholder="••••••"
-                disabled={authLoading}
-              />
+              <div className="password-input-wrapper">
+                <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength="6"
+                    placeholder="••••••"
+                    disabled={authLoading}
+                />
+                <button
+                    type="button"
+                    className="toggle-password"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                >
+                    {showPassword ? '🙈' : '👁️'}
+                </button>
+                </div>
+
             </div>
 
             {!isLogin && (
@@ -210,8 +227,8 @@ const Navbar = () => {
               </div>
             )}
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="hero-btn primary"
               disabled={authLoading}
             >
@@ -221,8 +238,8 @@ const Navbar = () => {
 
           <div className="auth-toggle">
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
-            <button 
-              onClick={toggleAuthMode} 
+            <button
+              onClick={toggleAuthMode}
               className="toggle-btn"
               disabled={authLoading}
             >
@@ -231,6 +248,7 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
       {showWatchList && (
         <WatchList onClose={() => setShowWatchList(false)} />
       )}
