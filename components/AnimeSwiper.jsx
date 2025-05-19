@@ -184,82 +184,102 @@ useEffect(() => {
 
 
    const getPersonalizedRecommendation = async (preferences, ratedAnimeIds) => {
-    setIsLoading(true);
-    const tried = new Set();
+  setIsLoading(true);
+  const tried = new Set();
 
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const likedTitles = preferences.likes.map(l => l.title).join(', ') || 'none';
-        const dislikedTitles = preferences.dislikes.map(d => d.title).join(', ') || 'none';
-        const avoid = [...tried, ...preferences.likes.map(l => l.title), ...preferences.dislikes.map(d => d.title)].join(', ') || 'none';
+  // Get favorite genres and anime from preferences
+  let favoriteGenres = 'any';
+  let favoriteAnimes = 'none';
+  if (preferences.preferences) {
+    favoriteGenres = preferences.preferences.favoriteGenres?.join(', ') || 'any';
+    favoriteAnimes = preferences.preferences.favoriteAnimes?.join(', ') || 'none';
+  }
 
-           const prompt = `Recommend exactly one anime that:
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const likedTitles = preferences.likes.map(l => l.title).join(', ') || 'none';
+      const dislikedTitles = preferences.dislikes.map(d => d.title).join(', ') || 'none';
+      const avoid = [...tried, ...preferences.likes.map(l => l.title), ...preferences.dislikes.map(d => d.title)].join(', ') || 'none';
+
+      const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
-   - Liked: ${likedTitles}
+   - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
    - Disliked: ${dislikedTitles}
-3. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}
+3. Matches the user's favorite genres: ${favoriteGenres}
+4. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}, ${favoriteAnimes}
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
-        const result = await model.generateContent([prompt]);
-        const raw = result.response.text().trim();
-        let rec;
-        try {
-          rec = parseJsonFromText(raw);
-        } catch (err) {
-          console.error('Failed to parse recommendation JSON:', raw);
-          rec = { title: raw, reason: '' };
-        }
-        tried.add(rec.title);
 
-        const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
-        const searchData = await searchRes.json();
-        const filtered = searchData.data.filter(a => !ratedAnimeIds.includes(a.id));
-
-        if (filtered.length) {
-          setAnimeList([{ ...filtered[0], explanation: rec.reason }]);
-          setCurrentIndex(0);
-          break;
-        }
-      } catch (e) {
-        console.error(e);
+      const result = await model.generateContent([prompt]);
+      const raw = result.response.text().trim();
+      let rec;
+      try {
+        rec = parseJsonFromText(raw);
+      } catch (err) {
+        console.error('Failed to parse recommendation JSON:', raw);
+        rec = { title: raw, reason: '' };
       }
+      tried.add(rec.title);
+
+      const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
+      const searchData = await searchRes.json();
+      const filtered = searchData.data.filter(a => !ratedAnimeIds.includes(a.id));
+
+      if (filtered.length) {
+        setAnimeList([{ ...filtered[0], explanation: rec.reason }]);
+        setCurrentIndex(0);
+        break;
+      }
+    } catch (e) {
+      console.error(e);
     }
-    setIsLoading(false);
-  };
+  }
+  setIsLoading(false);
+};
 
 
 
 
 
   const getGeminiRecommendedAnime = async (currentAnime, action) => {
-    setIsLoading(true);
+  setIsLoading(true);
 
-    // Gather latest user preferences
-    const user = auth.currentUser;
-    let latest = { likes: [], dislikes: [] };
-    let ratedIds = [];
-    if (user) {
-      const userRef = doc(db, 'Users', user.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        latest = { likes: data.likes || [], dislikes: data.dislikes || [] };
-        ratedIds = [...latest.likes.map(l => l.id), ...latest.dislikes.map(d => d.id)];
+  // Gather latest user preferences
+  const user = auth.currentUser;
+  let latest = { likes: [], dislikes: [] };
+  let ratedIds = [];
+  let favoriteGenres = 'any';
+  let favoriteAnimes = 'none';
+  
+  if (user) {
+    const userRef = doc(db, 'Users', user.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      latest = { likes: data.likes || [], dislikes: data.dislikes || [] };
+      ratedIds = [...latest.likes.map(l => l.id), ...latest.dislikes.map(d => d.id)];
+      
+      // Get favorite genres and anime from preferences
+      if (data.preferences) {
+        favoriteGenres = data.preferences.favoriteGenres?.join(', ') || 'any';
+        favoriteAnimes = data.preferences.favoriteAnimes?.join(', ') || 'none';
       }
     }
+  }
 
-    const likedTitles = latest.likes.map(l => l.title).join(', ') || 'none';
-    const dislikedTitles = latest.dislikes.map(d => d.title).join(', ') || 'none';
+  const likedTitles = latest.likes.map(l => l.title).join(', ') || 'none';
+  const dislikedTitles = latest.dislikes.map(d => d.title).join(', ') || 'none';
 
-    const tried = new Set();
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
+  const tried = new Set();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
       const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
-   - Liked: ${likedTitles}
+   - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
    - Disliked: ${dislikedTitles}
-3. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}
+3. Matches the user's favorite genres: ${favoriteGenres}
+4. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}, ${favoriteAnimes}
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
 
       const result = await model.generateContent([prompt]);
@@ -273,24 +293,24 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
       }
 
       if (tried.has(rec.title)) continue;
-        tried.add(rec.title);
+      tried.add(rec.title);
 
-        // Search Kitsu
-        const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
-        const searchData = await searchRes.json();
-        const candidates = searchData.data.filter(a => !ratedIds.includes(a.id));
-        if (candidates.length) {
-          setAnimeList(prev => [...prev, { ...candidates[0], explanation: rec.reason }]);
-          setCurrentIndex(prev => prev + 1);
-          break;
-        }
-      } catch (err) {
-        console.error('Error during retry attempt:', err);
+      // Search Kitsu
+      const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
+      const searchData = await searchRes.json();
+      const candidates = searchData.data.filter(a => !ratedIds.includes(a.id));
+      if (candidates.length) {
+        setAnimeList(prev => [...prev, { ...candidates[0], explanation: rec.reason }]);
+        setCurrentIndex(prev => prev + 1);
+        break;
       }
+    } catch (err) {
+      console.error('Error during retry attempt:', err);
     }
+  }
 
-        setIsLoading(false);
-  };
+  setIsLoading(false);
+};
 
 
    const handleSwipe = async (direction) => {

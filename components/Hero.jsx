@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useAnimeCharacters from './useAnimeCharacters';
 import '../hero.css';
@@ -6,6 +7,8 @@ import '../hero.css';
 const Hero = () => {
 
 const characters = useAnimeCharacters();
+const MotionLink = motion(Link);
+
 
   return (
     <section className="hero-section">
@@ -44,17 +47,17 @@ const characters = useAnimeCharacters();
           Start Swiping
           <span className="arrow">→</span>
         </motion.a>
-          <motion.a
-            href="#features"
+           <MotionLink
+            to="/learn-more"
+            className="hero-btn secondary"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="hero-btn secondary"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
           >
             Learn More
-          </motion.a>
+          </MotionLink>
         </div>
       </motion.div>
       <div className="hero-scroll-hint">
