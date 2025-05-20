@@ -5,6 +5,7 @@ import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import '../Navbar.css';
 import { Link } from 'react-router-dom';
 import PreferencesModal from './PreferencesModal';
+import { Home, List, LogOut, LogIn } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -31,7 +32,6 @@ const Navbar = ({ onPreferencesComplete }) => {
   const [authLoading, setAuthLoading] = useState(false);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-
   const [showPreferences, setShowPreferences] = useState(false);
 
   useEffect(() => {
@@ -59,38 +59,37 @@ const Navbar = ({ onPreferencesComplete }) => {
   };
 
   const handleAuth = async (e) => {
-  e.preventDefault();
-  setError('');
-  setAuthLoading(true);
+    e.preventDefault();
+    setError('');
+    setAuthLoading(true);
 
-  if (!email || !password) {
-    setError('Email and password are required');
-    setAuthLoading(false);
-    return;
-  }
-
-  if (!isLogin && !username) {
-    setError('Username is required');
-    setAuthLoading(false);
-    return;
-  }
-
-  try {
-    if (isLogin) {
-      await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'Users', userCredential.user.uid), {
-        username: username,
-        email: email,
-        likes: [],
-        dislikes: [],
-        createdAt: new Date().toISOString()
-      });
-      // Show preferences modal only for new signups
-      setShowPreferences(true);
+    if (!email || !password) {
+      setError('Email and password are required');
+      setAuthLoading(false);
+      return;
     }
-    setShowAuthModal(false);
+
+    if (!isLogin && !username) {
+      setError('Username is required');
+      setAuthLoading(false);
+      return;
+    }
+
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, 'Users', userCredential.user.uid), {
+          username: username,
+          email: email,
+          likes: [],
+          dislikes: [],
+          createdAt: new Date().toISOString()
+        });
+        setShowPreferences(true);
+      }
+      setShowAuthModal(false);
     } catch (err) {
       const errorMessages = {
         'auth/invalid-email': 'Invalid email address',
@@ -123,43 +122,78 @@ const Navbar = ({ onPreferencesComplete }) => {
   };
 
   return (
-    <nav className="navbar">
-      <div className="navbar-container">
-        <div className="navbar-logo" style={{ fontSize: window.innerWidth <= 768 && user ? calculateFontSize() : '1.6rem' }}>
-          {user && window.innerWidth <= 768 ? username : "AniSwipe"}
-        </div>
+    <>
+      {/* Desktop Navbar */}
+      <nav className="desktop-navbar">
+        <div className="navbar-container">
+          <div className="navbar-logo" style={{ fontSize: window.innerWidth <= 768 && user ? calculateFontSize() : '1.6rem' }}>
+            {user && window.innerWidth <= 768 ? username : "AniSwipe"}
+          </div>
 
-        <div className="navbar-links">
-          {isUserLoading ? (
-            <div className="navbar-loading">
-              <div className="navbar-spinner"></div>
-            </div>
-          ) : user ? (
-            <>
-              <Link to="/watch-list" className="watch-list-btn">
-                My Watch List
-              </Link>
-              <span className="navbar-username">Welcome, {username || user.email}</span>
+          <div className="navbar-links">
+            {isUserLoading ? (
+              <div className="navbar-loading">
+                <div className="navbar-spinner"></div>
+              </div>
+            ) : user ? (
+              <>
+                <Link to="/watch-list" className="watch-list-btn">
+                  My Watch List
+                </Link>
+                <Link to="/" className="home-btn">Home</Link>
+                <span className="navbar-username">Welcome, {username || user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="navbar-btn secondary"
+                  disabled={authLoading}
+                >
+                  {authLoading ? '...' : 'Logout'}
+                </button>
+              </>
+            ) : (
               <button
-                onClick={handleLogout}
-                className="navbar-btn secondary"
-                disabled={authLoading}
+                onClick={() => setShowAuthModal(true)}
+                className="hero-btn primary"
+                id="login-btn"
               >
-                {authLoading ? '...' : 'Logout'}
+                Login / Sign Up
               </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="hero-btn primary"
-              id="login-btn"
-            >
-              Login / Sign Up
-            </button>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      </nav>
 
+      <nav className="mobile-navbar">
+  {isUserLoading ? (
+    <div className="mobile-loading">
+      <div className="mobile-spinner"></div>
+    </div>
+  ) : (
+    <div className="mobile-nav-icons">
+      <Link to="/" className="nav-icon"><Home size={24} /></Link>
+      {user && (
+        <Link to="/watch-list" className="nav-icon">
+          <List size={24} />
+        </Link>
+      )}
+      {!user && !authLoading && (
+        <button
+          className="nav-icon"
+          onClick={() => setShowAuthModal(true)}
+        >
+          <LogIn size={24} />
+        </button>
+      )}
+      {user && (
+        <button onClick={handleLogout} className="nav-icon">
+          <LogOut size={24} />
+        </button>
+      )}
+    </div>
+  )}
+</nav>
+
+      {/* Auth Modal - now outside both navbars */}
       <div className={`auth-modal ${showAuthModal ? 'active' : ''}`}>
         <div className="auth-modal-content">
           <button
@@ -194,24 +228,23 @@ const Navbar = ({ onPreferencesComplete }) => {
               <label>Password</label>
               <div className="password-input-wrapper">
                 <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength="6"
-                    placeholder="••••••"
-                    disabled={authLoading}
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength="6"
+                  placeholder="••••••"
+                  disabled={authLoading}
                 />
                 <button
-                    type="button"
-                    className="toggle-password"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
+                  type="button"
+                  className="toggle-password"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
                 >
-                    {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? '🙈' : '👁️'}
                 </button>
-                </div>
-
+              </div>
             </div>
 
             {!isLogin && (
@@ -250,20 +283,18 @@ const Navbar = ({ onPreferencesComplete }) => {
         </div>
       </div>
 
-  {showPreferences && (
-  <PreferencesModal 
-    onComplete={() => {
-      setShowPreferences(false);
-      if (typeof onPreferencesComplete === 'function') {
-        onPreferencesComplete();
-      }
-    }} 
-    isOpen={showPreferences} 
-  />
-)}
-
-
-    </nav>
+      {showPreferences && (
+        <PreferencesModal 
+          onComplete={() => {
+            setShowPreferences(false);
+            if (typeof onPreferencesComplete === 'function') {
+              onPreferencesComplete();
+            }
+          }} 
+          isOpen={showPreferences} 
+        />
+      )}
+    </>
   );
 };
 

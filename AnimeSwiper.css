@@ -661,7 +661,7 @@
 @media (max-width: 600px) {
   .swiper-container {
     padding: 16px;
-    min-height: 80vh;
+    min-height: 90vh;
   }
 
   .anime-card {

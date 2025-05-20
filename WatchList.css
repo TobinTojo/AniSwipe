@@ -98,6 +98,11 @@
     margin: 1rem;
   }
 
+.watch-list-overlay {
+    margin-top: 0px !important;
+}
+
+
   .anime-grid {
     grid-template-columns: 1fr;
     gap: 1rem;

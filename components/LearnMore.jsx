@@ -1,7 +1,7 @@
-// LearnMore.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
-import '../LearnMore.css'; // We'll create this CSS file next
+import { Link } from 'react-router-dom';
+import '../LearnMore.css';
 
 const LearnMore = () => {
   return (
@@ -78,7 +78,9 @@ const LearnMore = () => {
 
         <div className="cta-section">
           <p>Ready to start discovering your next favorite anime?</p>
-          <a href="/" className="cta-button">Start Swiping Now</a>
+          <Link to="/" className="cta-button">
+            Start Swiping Now
+          </Link>
         </div>
       </div>
     </motion.div>

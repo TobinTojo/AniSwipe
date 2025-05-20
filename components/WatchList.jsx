@@ -123,7 +123,6 @@ const WatchList = ({ onClose }) => {
   return (
     <div className="watch-list-overlay">
       <div className="watch-list-container">
-        <button className="close-btn" onClick={onClose}>×</button>
         <h2>Your Watch List</h2>
 
         {loading ? (
