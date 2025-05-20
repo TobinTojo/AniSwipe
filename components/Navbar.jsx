@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import '../Navbar.css';
-import WatchList from './WatchList';
+import { Link } from 'react-router-dom';
 import PreferencesModal from './PreferencesModal';
 
 const firebaseConfig = {
@@ -29,7 +29,6 @@ const Navbar = ({ onPreferencesComplete }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-  const [showWatchList, setShowWatchList] = useState(false);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -137,12 +136,9 @@ const Navbar = ({ onPreferencesComplete }) => {
             </div>
           ) : user ? (
             <>
-              <button
-                onClick={() => setShowWatchList(true)}
-                className="watch-list-btn"
-              >
+              <Link to="/watch-list" className="watch-list-btn">
                 My Watch List
-              </button>
+              </Link>
               <span className="navbar-username">Welcome, {username || user.email}</span>
               <button
                 onClick={handleLogout}
@@ -254,9 +250,6 @@ const Navbar = ({ onPreferencesComplete }) => {
         </div>
       </div>
 
-      {showWatchList && (
-        <WatchList onClose={() => setShowWatchList(false)} />
-      )}
   {showPreferences && (
   <PreferencesModal 
     onComplete={() => {

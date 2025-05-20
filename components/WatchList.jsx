@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from './Navbar';
 import '../AnimeSwiper.css';
 import '../WatchList.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import StreamingPlatforms from './StreamingPlatforms.jsx';  // Import StreamingPlatforms
+import StreamingPlatforms from './StreamingPlatforms.jsx';
 
 const WatchList = ({ onClose }) => {
   const [watchList, setWatchList] = useState([]);
@@ -14,38 +15,45 @@ const WatchList = ({ onClose }) => {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
-    const fetchWatchList = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const userRef = doc(db, 'Users', user.uid);
-          const docSnap = await getDoc(userRef);
-          if (docSnap.exists()) {
-            const likes = docSnap.data().likes || [];
-            // Fetch the full data including synopsis from Kitsu
-            const updatedWatchList = await Promise.all(likes.map(async (anime) => {
-              const response = await fetch(`https://kitsu.io/api/edge/anime/${anime.id}`);
-              const data = await response.json();
-              const synopsis = data.data.attributes.synopsis || 'Synopsis not available';
-              const truncatedSynopsis = truncateSynopsis(synopsis);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // No user—stop spinner
+        setLoading(false);
+        return;
+      }
+            try {
+        const userRef = doc(db, 'Users', user.uid);
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+          const likes = docSnap.data().likes || [];
+          const list = await Promise.all(
+            likes.map(async (anime) => {
+              const res = await fetch(`https://kitsu.io/api/edge/anime/${anime.id}`);
+              const data = await res.json();
+              const attr = data.data.attributes;
               return {
-                ...anime,
-                synopsis,
-                truncatedSynopsis
+                id: anime.id,
+                title: attr.canonicalTitle || anime.title,
+                image: attr.posterImage?.small || anime.image,
+                synopsis: attr.synopsis || 'No synopsis available',
+                truncatedSynopsis: truncateSynopsis(attr.synopsis),
+                // carry over any other fields you need…
               };
-            }));
-            setWatchList(updatedWatchList);
-          }
+            })
+          );
+          setWatchList(list);
         }
-      } catch (error) {
-        console.error('Error fetching watch list:', error);
+      } catch (err) {
+        console.error('Error fetching watch list:', err);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    fetchWatchList();
+    return () => unsubscribe();
   }, []);
+
+  
 
   const handleDetailsClick = async (anime) => {
     setIsLoadingDetails(true);
@@ -232,3 +240,4 @@ const WatchList = ({ onClose }) => {
 };
 
 export default WatchList;
+

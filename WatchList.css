@@ -1,76 +1,25 @@
-/* WatchList.css */
 .watch-list-overlay {
-  position: fixed;
-  top: 0;
-  left: -15;
-  width: 100%;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-  pointer-events: auto;
-  padding: 20px;
+    margin-top: 50px;
 }
 
 .watch-list-container {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  max-width: 1200px;
+  margin: 2rem auto;
   padding: 2rem;
+  background: #0f172a;
+  color: #e2e8f0;
   border-radius: 12px;
-  width: 90%;
-  max-width: 900px;
-  height: 70vh;
-  overflow-y: auto;
-  position: relative;
-  border: 1px solid #1e2d3b;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  margin: auto;
-  color: #ecf0f1;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .watch-list-container h2 {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 800;
-  background: linear-gradient(to right, #ffffff, #d1d5db);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
   margin-bottom: 1.5rem;
   text-align: center;
-}
-
-.close-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: #333;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
-  color: #ccc;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: #444;
-  color: white;
-  transform: rotate(90deg);
-}
-
-.anime-grid-container {
-  max-height: calc(70vh - 100px);
-  overflow-y: auto;
-  margin-top: 1rem;
+  background: linear-gradient(to right, #ffffff, #d1d5db);
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .anime-grid {
@@ -90,8 +39,8 @@
 }
 
 .watchlist-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
 }
 
 .watchlist-card .poster {
@@ -143,108 +92,96 @@
   transform: translateY(-2px);
 }
 
-/* Mobile Styling for Watchlist Cards */
-@media (max-width: 600px) {
-  .watch-list-overlay {
-    padding: 10px;
-  }
-
+@media (max-width: 768px) {
   .watch-list-container {
-    padding: 1.5rem;
-    width: 70%;
-    height: auto;
-    overflow-y: auto;
+    padding: 1rem;
+    margin: 1rem;
   }
 
   .anime-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-
-  .watchlist-card {
-    width: 100%;
-    height: auto;
-  }
-
-  .watchlist-card .poster {
-    height: 220px;
-  }
-
-  .watchlist-card .anime-info {
-    padding: 12px;
-  }
-
-  .watchlist-card .anime-info h2 {
-    font-size: 1.1rem;
-  }
-
-  .watchlist-card .anime-info p {
-    font-size: 0.85rem;
-    line-height: 1.4;
-  }
-
-  .watchlist-card .details-btn {
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
+
+/* Details overlay styles (popup) */
 .watch-list-details-overlay {
-  position: absolute; /* Removed fixed positioning */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
-  justify-content: center; /* Horizontally center the popup */
-  align-items: center;     /* Vertically center the popup */
+  justify-content: center;
+  align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(5px); /* Smooth background blur */
-  padding: 20px;
-  height: 100vh; /* Take up the full height of the viewport */
-  width: 100vw;  /* Take up the full width of the viewport */
+  backdrop-filter: blur(5px);
 }
 
-/* Details Popup - Centered content */
 .watch-list-details-popup {
   background: #1f1f1f;
   border-radius: 16px;
   max-width: 800px;
   width: 90%;
   max-height: 90vh;
-  height: auto;             /* Allow the height to be dynamic */
-  overflow-y: auto;         /* Enable vertical scrolling when content overflows */
+  overflow-y: auto;
   position: relative;
   padding: 30px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  border: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;  /* Ensure content starts from top */
-  align-items: center; /* Center the content inside the popup */
-  overflow: hidden;
 }
 
-/* Content inside the popup */
 .watch-list-popup-content {
   display: flex;
   flex-direction: column;
-  align-items: center;  /* Center the elements horizontally */
-  gap: 20px;            /* Space between the content sections */
+  align-items: center;
+  gap: 20px;
   width: 100%;
-  max-height: 80vh;      /* Limit height for better responsiveness */
-  overflow-y: auto;      /* Allow scrolling if the content overflows */
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .watch-list-popup-poster {
   width: 220px;
   height: 320px;
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   object-fit: cover;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .watch-list-popup-info {
   color: #f9f9f9;
   text-align: center;
   flex: 1;
-  max-width: 100%; /* Ensure the text area doesn’t overflow */
+  max-width: 100%;
+}
+
+/* Close button positioning inside popup */
+.watch-list-details-popup .close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+@media (max-width: 600px) {
+  .watch-list-details-popup {
+    width: 95%;
+    max-width: 400px;
+    padding: 20px;
+  }
+
+  .watch-list-popup-poster {
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 16px;
+  }
+
+  .watch-list-popup-info h2 {
+    font-size: 1.4rem;
+    text-align: center;
+  }
+
+  .watch-list-popup-content {
+    flex-direction: column;
+  }
 }

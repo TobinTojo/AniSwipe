@@ -5,7 +5,8 @@ import './index.css';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import AnimeSwiper from './components/AnimeSwiper';
-import LearnMore from './components/LearnMore';       // ← make sure this is here
+import LearnMore from './components/LearnMore'; 
+import WatchList from './components/WatchList';
 
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           }
         />
         <Route path="/learn-more" element={<LearnMore />} />
+        <Route path="/watch-list" element={<WatchList />} />
       </Routes>
     </BrowserRouter>
   );
