@@ -240,3 +240,4 @@ const WatchList = ({ onClose }) => {
 
 export default WatchList;
 
+

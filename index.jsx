@@ -7,7 +7,7 @@ import Hero from './components/Hero';
 import AnimeSwiper from './components/AnimeSwiper';
 import LearnMore from './components/LearnMore'; 
 import WatchList from './components/WatchList';
-
+import ProfilePage from './components/ProfilePage';
 
 function App() {
   const [preferencesCompleted, setPreferencesCompleted] = useState(false);
@@ -30,12 +30,17 @@ function App() {
         />
         <Route path="/learn-more" element={<LearnMore />} />
         <Route path="/watch-list" element={<WatchList />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+
+
+
 
 
 

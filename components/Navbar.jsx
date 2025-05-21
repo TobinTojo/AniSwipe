@@ -5,7 +5,7 @@ import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import '../Navbar.css';
 import { Link } from 'react-router-dom';
 import PreferencesModal from './PreferencesModal';
-import { Home, List, LogOut, LogIn } from 'lucide-react';
+import { Home, List, LogOut, LogIn, User } from 'lucide-react';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -137,10 +137,15 @@ const Navbar = ({ onPreferencesComplete }) => {
               </div>
             ) : user ? (
               <>
+                <Link to="/" className="home-btn">Home</Link>
                 <Link to="/watch-list" className="watch-list-btn">
                   My Watch List
                 </Link>
-                <Link to="/" className="home-btn">Home</Link>
+                <Link to="/profile" className="profile-btn">
+                  <User size={20} />
+                  <span>Profile</span>
+                </Link>
+
                 <span className="navbar-username">Welcome, {username || user.email}</span>
                 <button
                   onClick={handleLogout}
@@ -175,6 +180,11 @@ const Navbar = ({ onPreferencesComplete }) => {
         <Link to="/watch-list" className="nav-icon">
           <List size={24} />
         </Link>
+      )}
+      {user && (
+      <Link to="/profile" className="nav-icon">
+        <User size={24} />
+      </Link>
       )}
       {!user && !authLoading && (
         <button
