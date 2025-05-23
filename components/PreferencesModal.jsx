@@ -3,7 +3,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from './Navbar';
 import '../PreferencesModal.css';
 
-const GENRES = [
+export const GENRES = [
   "Action", "Adventure", "Comedy", "Drama", "Fantasy", 
   "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life",
   "Sports", "Supernatural", "Thriller"

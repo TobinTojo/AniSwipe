@@ -6,6 +6,8 @@ import StreamingPlatforms from './StreamingPlatforms.jsx';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { auth, db } from './Navbar';
+import { GENRES } from './PreferencesModal'; // Import the genres
+
 
 function parseJsonFromText(text) {
   const match = text.match(/\{[\s\S]*\}/);
@@ -39,6 +41,59 @@ function AnimeSwiper({ hasCompletedPreferences }) {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
 
   const [initialSwipeDir, setInitialSwipeDir] = useState(null);
+
+   // ... existing state ...
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState([...GENRES]);
+  const [episodeFilter, setEpisodeFilter] = useState('any');
+
+  const unselectedGenres = GENRES.filter(g => !selectedGenres.includes(g)).map(g => g.toLowerCase());
+
+    // Load filters from Firebase on component mount
+    useEffect(() => {
+      const loadFilters = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        const userRef = doc(db, 'Users', user.uid);
+        const docSnap = await getDoc(userRef);
+        if (!docSnap.exists()) return;
+        const filters = docSnap.data().filters;
+        if (filters) {
+          setSelectedGenres(filters.genres || [...GENRES]);
+          setEpisodeFilter(filters.episodes || 'any');
+        }
+      };
+      loadFilters();
+    }, [isUserLoggedIn]);
+
+
+  // Save filters to Firebase whenever they change
+  const saveFilters = async (genres = selectedGenres, episodes = episodeFilter) => {
+    const user = auth.currentUser;
+    if (user) {
+      const userRef = doc(db, 'Users', user.uid);
+      await updateDoc(userRef, {
+        filters: {
+          genres,
+          episodes
+        }
+      });
+    }
+  };
+
+  const toggleGenre = (genre) => {
+  const newGenres = selectedGenres.includes(genre)
+    ? selectedGenres.filter(g => g !== genre)
+    : [...selectedGenres, genre];
+  setSelectedGenres(newGenres);
+  saveFilters(newGenres, episodeFilter);
+};
+
+
+  const handleEpisodeFilterChange = (value) => {
+  setEpisodeFilter(value);
+  saveFilters(selectedGenres, value);
+};
 
 
 
@@ -201,14 +256,17 @@ useEffect(() => {
       const dislikedTitles = preferences.dislikes.map(d => d.title).join(', ') || 'none';
       const avoid = [...tried, ...preferences.likes.map(l => l.title), ...preferences.dislikes.map(d => d.title)].join(', ') || 'none';
 
-      const prompt = `Recommend exactly one anime that:
+    const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
    - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
    - Disliked: ${dislikedTitles}
 3. Matches the user's favorite genres: ${favoriteGenres}
 4. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}, ${favoriteAnimes}
+5. Is in these genres: ${selectedGenres.join(', ')}
+6. ${episodeFilter === '>=50' ? 'Has 50 or more episodes' : episodeFilter === '<=50' ? 'Has 50 or fewer episodes' : ''}
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
+
 
       const result = await model.generateContent([prompt]);
       const raw = result.response.text().trim();
@@ -226,10 +284,22 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
       const filtered = searchData.data.filter(a => !ratedAnimeIds.includes(a.id));
 
       if (filtered.length) {
+        // Double-check actual genres via Jikan and skip if it has any unselected genre
+        const jikanRes = await fetch(
+          `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(rec.title)}&limit=1`
+        );
+        const jikanData = await jikanRes.json();
+        const animeGenres = (jikanData.data[0]?.genres || []).map(g => g.name.toLowerCase());
+        if (animeGenres.some(g => unselectedGenres.includes(g))) {
+          // this one sneaks in a deselected genre—try again
+          continue;
+        }
+
         setAnimeList([{ ...filtered[0], explanation: rec.reason }]);
         setCurrentIndex(0);
         break;
       }
+
     } catch (e) {
       console.error(e);
     }
@@ -273,13 +343,15 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
   const tried = new Set();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const prompt = `Recommend exactly one anime that:
+     const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
    - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
    - Disliked: ${dislikedTitles}
 3. Matches the user's favorite genres: ${favoriteGenres}
 4. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}, ${favoriteAnimes}
+5. Is in these genres: ${selectedGenres.join(', ')}
+6. ${episodeFilter === '>=50' ? 'Has 50 or more episodes' : episodeFilter === '<=50' ? 'Has 50 or fewer episodes' : ''}
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
 
       const result = await model.generateContent([prompt]);
@@ -299,11 +371,24 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
       const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
       const searchData = await searchRes.json();
       const candidates = searchData.data.filter(a => !ratedIds.includes(a.id));
-      if (candidates.length) {
-        setAnimeList(prev => [...prev, { ...candidates[0], explanation: rec.reason }]);
-        setCurrentIndex(prev => prev + 1);
-        break;
+     if (candidates.length) {
+      // Verify genres using the Jikan API
+      const jikanRes = await fetch(
+        `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(rec.title)}&limit=1`
+      );
+      const jikanData = await jikanRes.json();
+      const animeGenres = (jikanData.data[0]?.genres || []).map(g => g.name.toLowerCase());
+
+      // Skip the current recommendation if it contains any unselected genres
+      if (animeGenres.some(g => unselectedGenres.includes(g))) {
+        continue;
       }
+
+      setAnimeList(prev => [...prev, { ...candidates[0], explanation: rec.reason }]);
+      setCurrentIndex(prev => prev + 1);
+      break;
+    }
+
     } catch (err) {
       console.error('Error during retry attempt:', err);
     }
@@ -484,8 +569,75 @@ const swipeHandlers = useSwipeable({
     })
   };
 
+   // Add this to your JSX (before the AnimatePresence component)
+  const renderFilters = () => (
+    <div className={`filters-modal ${showFilters ? 'active' : ''}`}>
+      <div className="filters-content">
+        <h2>Filter Recommendations</h2>
+        <button className="close-btn" onClick={() => setShowFilters(false)}>✕</button>
+        
+        <div className="filters-group">
+          <label>Genres</label>
+          <div className="genre-select">
+            {GENRES.map(genre => (
+              <div
+                key={genre}
+                className={`genre-tag ${selectedGenres.includes(genre) ? 'selected' : ''}`}
+                onClick={() => toggleGenre(genre)}
+              >
+                {genre}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="filters-group">
+          <label>Episode Count</label>
+          <div className="episode-filter">
+            <button
+              className={`episode-btn ${episodeFilter === 'any' ? 'active' : ''}`}
+              onClick={() => handleEpisodeFilterChange('any')}
+            >
+              Any
+            </button>
+            <button
+              className={`episode-btn ${episodeFilter === '>=50' ? 'active' : ''}`}
+              onClick={() => handleEpisodeFilterChange('>=50')}
+            >
+              ≥50
+            </button>
+            <button
+              className={`episode-btn ${episodeFilter === '<=50' ? 'active' : ''}`}
+              onClick={() => handleEpisodeFilterChange('<=50')}
+            >
+              ≤50
+            </button>
+          </div>
+        </div>
+        
+        <button 
+          className="apply-filters-btn"
+          onClick={() => {
+            setShowFilters(false);
+            fetchInitialAnime(auth.currentUser);
+          }}
+        >
+          Apply Filters
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div id="swipe" className="swiper-container">
+      {isUserLoggedIn && (
+        <button 
+          className="filter-btn"
+          onClick={() => setShowFilters(true)}
+        >
+          <i className="fas fa-filter"></i> Filters
+        </button>
+      )}
       {!isUserLoggedIn ? (
         <div className="login-prompt">
           <h2>Please log in to start swiping!</h2>
@@ -640,6 +792,7 @@ const swipeHandlers = useSwipeable({
           </motion.div>
         </div>
       )}
+     {showFilters && renderFilters()}
     </div>
   );
 }
