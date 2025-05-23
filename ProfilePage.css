@@ -1,6 +1,6 @@
 .profile-container {
   max-width: 800px;
-  margin: 2rem auto;
+  margin: 5rem auto;
   padding: 1.5rem;
   background-color: #1e293b;
   border-radius: 10px;
@@ -120,4 +120,11 @@
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .profile-container {
+        min-height: 120vh;
+        margin: 0rem auto;
+    }
 }

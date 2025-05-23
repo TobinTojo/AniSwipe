@@ -142,8 +142,7 @@ const Navbar = ({ onPreferencesComplete }) => {
                   My Watch List
                 </Link>
                 <Link to="/profile" className="profile-btn">
-                  <User size={20} />
-                  <span>Profile</span>
+                  Profile
                 </Link>
 
                 <span className="navbar-username">Welcome, {username || user.email}</span>
