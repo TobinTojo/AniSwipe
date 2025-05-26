@@ -49,22 +49,30 @@ function AnimeSwiper({ hasCompletedPreferences }) {
 
   const unselectedGenres = GENRES.filter(g => !selectedGenres.includes(g)).map(g => g.toLowerCase());
 
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
+
+   const currentAnime = animeList[currentIndex];
     // Load filters from Firebase on component mount
-    useEffect(() => {
-      const loadFilters = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-        const userRef = doc(db, 'Users', user.uid);
-        const docSnap = await getDoc(userRef);
-        if (!docSnap.exists()) return;
-        const filters = docSnap.data().filters;
-        if (filters) {
-          setSelectedGenres(filters.genres || [...GENRES]);
-          setEpisodeFilter(filters.episodes || 'any');
-        }
-      };
-      loadFilters();
-    }, [isUserLoggedIn]);
+   useEffect(() => {
+  const loadFilters = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, 'Users', user.uid);
+    const docSnap = await getDoc(userRef);
+    if (!docSnap.exists()) return;
+    const filters = docSnap.data().filters;
+    if (filters) {
+      setSelectedGenres(filters.genres || [...GENRES]);
+      setEpisodeFilter(filters.episodes || 'any');
+      // Trigger a new search with the loaded filters
+      if (hasCompletedPreferences) {
+        fetchInitialAnime(user);
+      }
+    }
+  };
+  loadFilters();
+}, [isUserLoggedIn, hasCompletedPreferences]);
 
 
   // Save filters to Firebase whenever they change
@@ -98,7 +106,7 @@ function AnimeSwiper({ hasCompletedPreferences }) {
 
 
   // Fetch initial anime on load
- const fetchInitialAnime = async (user) => {
+const fetchInitialAnime = async (user) => {
   setIsLoading(true);
   try {
     const userRef = doc(db, 'Users', user.uid);
@@ -256,7 +264,7 @@ useEffect(() => {
       const dislikedTitles = preferences.dislikes.map(d => d.title).join(', ') || 'none';
       const avoid = [...tried, ...preferences.likes.map(l => l.title), ...preferences.dislikes.map(d => d.title)].join(', ') || 'none';
 
-    const prompt = `Recommend exactly one anime that:
+          const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
    - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
@@ -343,7 +351,7 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
   const tried = new Set();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-     const prompt = `Recommend exactly one anime that:
+        const prompt = `Recommend exactly one anime that:
 1. Aligns with the user's liked preferences only:
    - Liked: ${likedTitles}, ${favoriteAnimes}
 2. Avoids any similarity to the user's dislikes:
@@ -399,7 +407,6 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
 
 
    const handleSwipe = async (direction) => {
-    const currentAnime = animeList[currentIndex];
     setSwipeDirection(direction);
     setIsDragging(false);
     setActiveSwipe(direction);
@@ -487,11 +494,12 @@ const swipeHandlers = useSwipeable({
   trackMouse: true
 });
 
-  const handleDetailsClick = async () => {
-    setIsLoadingDetails(true);
-    const selectedAnime = animeList[currentIndex];
-    const kitsuId = selectedAnime.id;
-    const title = selectedAnime.attributes.canonicalTitle;
+  useEffect(() => {
+  const loadDetailsForCurrentAnime = async () => {
+    if (!currentAnime) return;
+    
+    const kitsuId = currentAnime.id;
+    const title = currentAnime.attributes.canonicalTitle;
 
     try {
       // Fetch Jikan data by title to get genre and recommendations
@@ -499,16 +507,16 @@ const swipeHandlers = useSwipeable({
       const searchData = await searchRes.json();
 
       const jikanAnime = searchData.data[0];
-      let genres = jikanAnime.genres.map(g => g.name).join(', ');
+      let genres = jikanAnime?.genres?.map(g => g.name).join(', ') || 'Unknown';
       let recommendations = [];
 
       if (jikanAnime) {
         const recRes = await fetch(`https://api.jikan.moe/v4/anime/${jikanAnime.mal_id}/recommendations`);
         const recData = await recRes.json();
-        recommendations = recData.data.slice(0, 5).map(rec => ({
+        recommendations = recData.data?.slice(0, 5).map(rec => ({
           title: rec.entry.title,
           url: rec.entry.url
-        }));
+        })) || [];
       }
 
       // Fetch streaming links from Kitsu
@@ -516,37 +524,34 @@ const swipeHandlers = useSwipeable({
       const streamData = await streamRes.json();
 
       setCurrentAnimeDetails({
-        ...selectedAnime,
+        ...currentAnime,
         genres,
         recommendations,
-        streamingLinks: streamData.data.map(link => ({
+        streamingLinks: streamData.data?.map(link => ({
           url: link.attributes.url,
           subs: link.attributes.subs,
           dubs: link.attributes.dubs
-        }))
+        })) || [],
+        youtubeVideoId: currentAnime.attributes.youtubeVideoId
       });
-
-      setShowDetails(true);
     } catch (error) {
       console.error('Error fetching details:', error);
       setCurrentAnimeDetails({
-        ...selectedAnime,
-        genres: 'Not available',
+        ...currentAnime,
+        genres: 'Unknown',
         recommendations: [],
-        streamingLinks: []
+        streamingLinks: [],
+        youtubeVideoId: null
       });
-      setShowDetails(true);
-    }
-    finally {
-      setIsLoadingDetails(false); // Always hide loading bar when done
     }
   };
+
+  loadDetailsForCurrentAnime();
+}, [currentAnime]);
 
   const closeDetails = () => {
     setShowDetails(false);
   };
-
-  const currentAnime = animeList[currentIndex];
 
   const variants = {
     enter: (direction) => ({
@@ -674,22 +679,146 @@ const swipeHandlers = useSwipeable({
                     exit="exit"
                     transition={{ type: 'tween', ease: 'easeOut', duration: 0.5 }}
                   >
-                    <img
-                      src={animeList[currentIndex].attributes.posterImage?.medium || 'https://via.placeholder.com/220x320'}
-                      alt={animeList[currentIndex].attributes.canonicalTitle}
-                      className="poster"
-                    />
+                    <div className="media-gallery">
+                      {currentMediaIndex === 0 ? (
+                        <img
+                          src={animeList[currentIndex].attributes.posterImage?.medium || 'https://via.placeholder.com/220x320'}
+                          alt={animeList[currentIndex].attributes.canonicalTitle}
+                          className="poster"
+                          onClick={() => {
+                            // Only switch to trailer if one exists
+                            if (animeList[currentIndex].attributes.youtubeVideoId) {
+                              setCurrentMediaIndex(1);
+                              setIsPlayingTrailer(true);
+                            }
+                          }}
+                          style={{ cursor: animeList[currentIndex].attributes.youtubeVideoId ? 'pointer' : 'default' }}
+                        />
+                      ) : (
+                        <div className="trailer-container">
+                          <iframe
+                            width="100%"
+                            height="400"
+                            src={`https://www.youtube.com/embed/${animeList[currentIndex].attributes.youtubeVideoId}?autoplay=1&mute=1`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          ></iframe>
+                          <button 
+                            className="back-to-poster"
+                            onClick={() => {
+                              setCurrentMediaIndex(0);
+                              setIsPlayingTrailer(false);
+                            }}
+                          >
+                            <i className="fas fa-image"></i> Back to Poster
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Dotted navigation */}
+                      <div className="gallery-dots">
+                        <span 
+                          className={`dot ${currentMediaIndex === 0 ? 'active' : ''}`}
+                          onClick={() => setCurrentMediaIndex(0)}
+                        ></span>
+                        {animeList[currentIndex].attributes.youtubeVideoId && (
+                          <span 
+                            className={`dot ${currentMediaIndex === 1 ? 'active' : ''}`}
+                            onClick={() => {
+                              setCurrentMediaIndex(1);
+                              setIsPlayingTrailer(true);
+                            }}
+                          ></span>
+                        )}
+                      </div>
+                    </div>
                     <div className="anime-info">
                       <h2>{animeList[currentIndex].attributes.canonicalTitle}</h2>
-                        {animeList[currentIndex].explanation && (
-                          <div className="explanation-container">
-                            <p className="explanation-title">Why you might like this:</p>
-                            <p className="explanation">{animeList[currentIndex].explanation}</p>
-                          </div>
-                        )}
-                      <button className="details-btn" onClick={handleDetailsClick} disabled={isLoadingDetails}>
-                        {isLoadingDetails ? 'Loading...' : 'More Details'}
-                      </button>
+                      {animeList[currentIndex].explanation && (
+                        <div className="explanation-container">
+                          <p className="explanation-title">Why you might like this:</p>
+                          <p className="explanation">{animeList[currentIndex].explanation}</p>
+                        </div>
+                      )}
+                      <div className="expanded-details">
+                        {/* Meta info row */}
+                        <div className="meta-info">
+                          {currentAnime.attributes.averageRating && (
+                            <span className="meta-item rating-star">
+                              {currentAnime.attributes.averageRating}%
+                            </span>
+                          )}
+                          {currentAnime.attributes.popularityRank && (
+                            <span className="meta-item popularity">
+                              #{currentAnime.attributes.popularityRank} Popular
+                            </span>
+                          )}
+                          {currentAnime.attributes.episodeCount && (
+                            <span className="meta-item episodes">
+                              {currentAnime.attributes.episodeCount} eps
+                            </span>
+                          )}
+                          {currentAnime.attributes.ageRatingGuide && (
+                            <span className="meta-item age-rating">
+                              {currentAnime.attributes.ageRatingGuide}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Dates */}
+                        <div className="detail-item">
+                          <span className="detail-label">Aired:</span>
+                          <span className="detail-value">
+                            {currentAnime.attributes.startDate ? new Date(currentAnime.attributes.startDate).toLocaleDateString() : 'Unknown'}
+                            {currentAnime.attributes.endDate && ` to ${new Date(currentAnime.attributes.endDate).toLocaleDateString()}`}
+                          </span>
+                        </div>
+
+                        {/* Synopsis */}
+                        <h3>Synopsis</h3>
+                        <p>{currentAnime.attributes.synopsis || 'No synopsis available.'}</p>
+
+                        {/* Genres */}
+                        <h3>Genres</h3>
+                        <div className="genres-list">
+                          {currentAnimeDetails?.genres ? (
+                            currentAnimeDetails.genres.split(', ').map((genre, index) => (
+                              <span key={index} className="genre-pill">{genre}</span>
+                            ))
+                          ) : (
+                            <span className="detail-value">Loading genres...</span>
+                          )}
+                        </div>
+
+                       {/* Streaming Platforms */}
+                        <h3>Available On</h3>
+                        <StreamingPlatforms streamingLinks={currentAnimeDetails?.streamingLinks} />
+
+
+                        {/* Similar Anime */}
+                        <h3>Similar Anime</h3>
+                        <div className="similar-anime">
+                          {currentAnimeDetails?.recommendations?.length > 0 ? (
+                            <ul className="similar-anime-list">
+                              {currentAnimeDetails.recommendations.map((rec, index) => (
+                                <li key={index} className="similar-anime-item">
+                                  <a 
+                                    href={rec.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="similar-anime-link"
+                                  >
+                                    {rec.title}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="detail-value">No recommendations available</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="swipe-hint">
                       <span className={activeSwipe === 'left' ? 'active' : ''}>👎 Pass</span>
@@ -705,92 +834,6 @@ const swipeHandlers = useSwipeable({
             </AnimatePresence>
           )}
         </>
-      )}
-
-      {showDetails && currentAnimeDetails && (
-        <div className="details-overlay">
-          <motion.div 
-            className="details-popup"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-          >
-            <button className="close-btn" onClick={closeDetails}>✕</button>
-            <div className="popup-content">
-              <img
-                src={currentAnimeDetails.attributes.posterImage?.medium || 'https://via.placeholder.com/220x320'}
-                alt={currentAnimeDetails.attributes.canonicalTitle}
-                className="popup-poster"
-              />
-              <div className="popup-info">
-                <h2>{currentAnimeDetails.attributes.canonicalTitle}</h2>
-
-                <div className="meta-info">
-                  {currentAnimeDetails.attributes.ageRatingGuide && (
-                    <span className="meta-item age-rating">
-                      {currentAnimeDetails.attributes.ageRatingGuide}
-                    </span>
-                  )}
-                  {currentAnimeDetails.attributes.popularityRank && (
-                    <span className="meta-item popularity">
-                      #{currentAnimeDetails.attributes.popularityRank}
-                    </span>
-                  )}
-                  {currentAnimeDetails.attributes.episodeCount && (
-                    <span className="meta-item episodes">
-                      {currentAnimeDetails.attributes.episodeCount} eps
-                    </span>
-                  )}
-                  {currentAnimeDetails.attributes.startDate && (
-                    <span className="meta-item calendar">
-                      {new Date(currentAnimeDetails.attributes.startDate).toLocaleDateString()}
-                      {currentAnimeDetails.attributes.endDate && (
-                        <> - {new Date(currentAnimeDetails.attributes.endDate).toLocaleDateString()}</>
-                      )}
-                    </span>
-                  )}
-                  {currentAnimeDetails.attributes.averageRating && (
-                    <span className="meta-item rating-star">
-                      {currentAnimeDetails.attributes.averageRating}%
-                    </span>
-                  )}
-                </div>
-
-                <div className="popup-section">
-                  <span>Genres: {currentAnimeDetails.genres || 'N/A'}</span>
-                </div>
-
-                <div className="popup-section synopsis">
-                  <h3>Synopsis</h3>
-                  <p>{currentAnimeDetails.attributes.synopsis || 'No synopsis available.'}</p>
-                </div>
-
-                <div className="popup-section">
-                  <h3>Available On</h3>
-                  <StreamingPlatforms streamingLinks={currentAnimeDetails.streamingLinks} />
-                </div>
-
-                <div className="popup-section similar">
-                  <h3>Similar Anime</h3>
-                  {currentAnimeDetails?.recommendations?.length > 0 ? (
-                    <ul>
-                      {currentAnimeDetails.recommendations.map((rec, index) => (
-                        <li key={index}>
-                          <a href={rec.url} target="_blank" rel="noopener noreferrer">
-                            {rec.title}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No recommendations available.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
       )}
      {showFilters && renderFilters()}
     </div>
