@@ -63,6 +63,7 @@ function AnimeSwiper({ hasCompletedPreferences }) {
     if (!docSnap.exists()) return;
     const filters = docSnap.data().filters;
     if (filters) {
+      console.log(filters.genres);
       setSelectedGenres(filters.genres || [...GENRES]);
       setEpisodeFilter(filters.episodes || 'any');
       // Trigger a new search with the loaded filters
@@ -115,6 +116,13 @@ const fetchInitialAnime = async (user) => {
     let preferences = { likes: [], dislikes: [] };
     let ratedAnimeIds = [];
     let userPreferences = {};
+    // grab filters right away
+    const filters = docSnap.data().filters || {};
+    const genresFromDB = filters.genres || selectedGenres;
+    // update local state so the UI matches
+    setSelectedGenres(genresFromDB);
+    setEpisodeFilter(filters.episodes || episodeFilter);
+
     
     if (docSnap.exists()) {
       const data = docSnap.data();
@@ -126,15 +134,19 @@ const fetchInitialAnime = async (user) => {
       userPreferences = data.preferences || {};
     }
 
-    if (preferences.likes.length > 0 || preferences.dislikes.length > 0) {
-      await getPersonalizedRecommendation(preferences, ratedAnimeIds);
+   if (preferences.likes.length > 0 || preferences.dislikes.length > 0) {
+    // pass in the genres you just loaded
+    await getPersonalizedRecommendation(preferences, ratedAnimeIds, genresFromDB);
     } else if (userPreferences.favoriteAnimes?.length > 0 || userPreferences.favoriteGenres?.length > 0) {
+      console.log('Calling getInitialRecommendation (has favorite animes/genres)');
       await getInitialRecommendation(userPreferences, ratedAnimeIds);
     } else {
+      console.log('Calling fetchRandomAnime (no preferences available)');
       await fetchRandomAnime(ratedAnimeIds);
     }
   } catch (error) {
     console.error('Error fetching initial anime:', error);
+    console.log('Falling back to fetchRandomAnime due to error');
     await fetchRandomAnime([]);
   } finally {
     setIsLoading(false);
@@ -143,6 +155,11 @@ const fetchInitialAnime = async (user) => {
 
 // Add this new function to AnimeSwiper.jsx
 const getInitialRecommendation = async (preferences, ratedAnimeIds) => {
+  console.log('getInitialRecommendation called with:', {
+    favoriteAnimes: preferences.favoriteAnimes?.length || 0,
+    favoriteGenres: preferences.favoriteGenres?.length || 0,
+    ratedAnimeIds: ratedAnimeIds.length
+  });
   setIsLoading(true);
   const tried = new Set();
 
@@ -214,6 +231,9 @@ useEffect(() => {
 
 
   const fetchRandomAnime = async (ratedAnimeIds) => {
+  console.log('fetchRandomAnime called (fallback)', {
+    ratedAnimeIds: ratedAnimeIds.length
+  });
   setIsLoading(true);
   try {
     // 1) Find total number of anime
@@ -246,9 +266,19 @@ useEffect(() => {
 };
 
 
-   const getPersonalizedRecommendation = async (preferences, ratedAnimeIds) => {
+   const getPersonalizedRecommendation = async (preferences, ratedAnimeIds, genres = selectedGenres) => {
+    console.log('getPersonalizedRecommendation called with:', {
+    likes: preferences.likes.length,
+    dislikes: preferences.dislikes.length,
+    ratedAnimeIds: ratedAnimeIds.length,
+    selectedGenres: genres,
+    unselectedGenres: GENRES.filter(g => !genres.includes(g)).map(g => g.toLowerCase())
+  });
   setIsLoading(true);
   const tried = new Set();
+
+    const unselected = GENRES.filter(g => !genres.includes(g)).map(g => g.toLowerCase());
+
 
   // Get favorite genres and anime from preferences
   let favoriteGenres = 'any';
@@ -271,7 +301,7 @@ useEffect(() => {
    - Disliked: ${dislikedTitles}
 3. Matches the user's favorite genres: ${favoriteGenres}
 4. Is in the Kitsu.io database and not among: ${likedTitles}, ${dislikedTitles}, ${favoriteAnimes}
-5. Is in these genres: ${selectedGenres.join(', ')}
+5. Is in these genres: ${genres.join(', ')}
 6. ${episodeFilter === '>=50' ? 'Has 50 or more episodes' : episodeFilter === '<=50' ? 'Has 50 or fewer episodes' : ''}
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
 
@@ -320,6 +350,8 @@ Only return JSON in this format: { "title": "Anime Title", "reason": "25-word ex
 
 
   const getGeminiRecommendedAnime = async (currentAnime, action) => {
+      console.log(`Calling getGeminiRecommendedAnime after ${action === 'right' ? 'like' : 'dislike'}`);
+
   setIsLoading(true);
 
   // Gather latest user preferences
@@ -594,7 +626,14 @@ const swipeHandlers = useSwipeable({
               </div>
             ))}
           </div>
+        {/* error if no genres */}
+        {selectedGenres.length === 0 && (
+          <p className="filters-error">
+            ⚠️ You must select at least one genre.
+          </p>
+        )}
         </div>
+
         
         <div className="filters-group">
           <label>Episode Count</label>
@@ -620,15 +659,17 @@ const swipeHandlers = useSwipeable({
           </div>
         </div>
         
-        <button 
-          className="apply-filters-btn"
-          onClick={() => {
-            setShowFilters(false);
-            fetchInitialAnime(auth.currentUser);
-          }}
-        >
-          Apply Filters
-        </button>
+       <button 
+        className="apply-filters-btn"
+        onClick={() => {
+          setShowFilters(false);
+          fetchInitialAnime(auth.currentUser);
+        }}
+        disabled={selectedGenres.length === 0}
+      >
+        Apply Filters
+      </button>
+
       </div>
     </div>
   );
@@ -669,24 +710,25 @@ const swipeHandlers = useSwipeable({
                   </div>
 
                   <motion.div
-                    key={animeList[currentIndex].id}
-                    className={`anime-card ${isDragging ? 'dragging' : ''} ${activeSwipe === 'left' ? 'swipe-left' : ''} ${activeSwipe === 'right' ? 'swipe-right' : ''}`}
-                    {...swipeHandlers}
-                    custom={swipeDirection}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ type: 'tween', ease: 'easeOut', duration: 0.5 }}
-                  >
+                      key={animeList[currentIndex].id}
+                      className={`anime-card ${isDragging ? 'dragging' : ''} ${activeSwipe==='left'?'swipe-left':''} ${activeSwipe==='right'?'swipe-right':''}`}
+                      {...swipeHandlers}                         // ← attach here
+                      custom={swipeDirection}
+                      variants={variants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ type: 'tween', ease: 'easeOut', duration: 0.5 }}
+                    >
                     <div className="media-gallery">
                       {currentMediaIndex === 0 ? (
+                         <>
                         <img
                           src={animeList[currentIndex].attributes.posterImage?.medium || 'https://via.placeholder.com/220x320'}
                           alt={animeList[currentIndex].attributes.canonicalTitle}
                           className="poster"
+                          // optionally keep this click-to-play behavior
                           onClick={() => {
-                            // Only switch to trailer if one exists
                             if (animeList[currentIndex].attributes.youtubeVideoId) {
                               setCurrentMediaIndex(1);
                               setIsPlayingTrailer(true);
@@ -694,6 +736,20 @@ const swipeHandlers = useSwipeable({
                           }}
                           style={{ cursor: animeList[currentIndex].attributes.youtubeVideoId ? 'pointer' : 'default' }}
                         />
+
+                        {/* only show the button if a trailer exists */}
+                        {animeList[currentIndex].attributes.youtubeVideoId && (
+                          <button
+                            className="view-trailer"
+                            onClick={() => {
+                              setCurrentMediaIndex(1);
+                              setIsPlayingTrailer(true);
+                            }}
+                          >
+                            <i className="fas fa-play"></i> View Trailer
+                          </button>
+                        )}
+                      </>
                       ) : (
                         <div className="trailer-container">
                           <iframe

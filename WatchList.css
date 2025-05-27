@@ -53,13 +53,20 @@
 .watchlist-card .anime-info {
   padding: 16px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: auto; /* Remove fixed height */
 }
 
 .watchlist-card .anime-info h2 {
   font-size: 1.2rem;
   margin: 0;
-  color: #f39c12; /* Warm yellow for contrast */
+  color: #f39c12;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .watchlist-card .anime-info p {
@@ -67,24 +74,27 @@
   color: #ecf0f1;
   margin: 10px 0;
   line-height: 1.4;
-  height: 50px;
+  flex-grow: 1; /* Allow paragraph to grow and push button down */
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Show max 3 lines */
+  -webkit-box-orient: vertical;
 }
 
 .watchlist-card .details-btn {
-  background: #e74c3c; /* Red button for emphasis */
+  background: #e74c3c;
   color: white;
   border: none;
   padding: 10px 20px;
-  margin-right: auto;
-  margin-left: auto;
   border-radius: 30px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
-  transition: background 0.3s ease;
-  margin-top: 10px;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+  width: fit-content;
+  align-self: center;
 }
 
 .watchlist-card .details-btn:hover {
@@ -168,25 +178,184 @@
   right: 15px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .watch-list-container {
+    padding: 1rem;
+    margin: 1rem;
+  }
+
+  .watch-list-overlay {
+    margin-top: 0px !important;
+  }
+
+  /* Replace grid with vertical list layout */
+  .anime-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0;
+  }
+
+  .watchlist-card {
+    display: flex;
+    width: 90%;
+    height: auto;
+    padding: 1rem;
+    background: #1e293b;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .watchlist-card .poster {
+    width: 80px;
+    height: 120px;
+    border-radius: 4px;
+    margin-right: 1rem;
+    border: none;
+  }
+
+  .watchlist-card .anime-info {
+    padding: 0;
+    text-align: left;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .watchlist-card .anime-info h2 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem 0;
+    color: #ffffff;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .watchlist-card .anime-info p {
+    height: auto;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin: 0 0 0.5rem 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .watchlist-card .details-btn {
+    align-self: flex-start;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    margin-top: auto;
+  }
+
+  /* Popup adjustments for mobile */
   .watch-list-details-popup {
     width: 95%;
-    max-width: 400px;
     padding: 20px;
   }
+}
 
-  .watch-list-popup-poster {
-    width: 100%;
-    max-width: 300px;
-    margin-bottom: 16px;
-  }
+.anime-stats {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
 
-  .watch-list-popup-info h2 {
-    font-size: 1.4rem;
-    text-align: center;
-  }
+.rating-star {
+  color: #f39c12; /* Gold color for stars */
+  font-weight: 600;
+}
 
-  .watch-list-popup-content {
+.popularity {
+  color: #3498db; /* Blue color for ranking */
+  font-weight: 600;
+}
+
+/* Add these new styles */
+.watch-list-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sort-options {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sort-btn, .group-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.sort-btn:hover, .group-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sort-btn.active, .group-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .watch-list-controls {
     flex-direction: column;
+    align-items: flex-start;
   }
+  
+  .sort-options {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .sort-btn, .group-btn {
+    flex-grow: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+/* semi-transparent full-area overlay */
+.watchlist-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* your spinner styling */
+.watchlist-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: watchlist-spin 1s linear infinite;
+}
+
+@keyframes watchlist-spin {
+  to { transform: rotate(360deg); }
 }
