@@ -7,6 +7,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { auth, db } from './Navbar';
 import { GENRES } from './PreferencesModal'; // Import the genres
+import { useLocation } from 'react-router-dom';
 
 
 function parseJsonFromText(text) {
@@ -53,6 +54,9 @@ function AnimeSwiper({ hasCompletedPreferences }) {
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
 
    const currentAnime = animeList[currentIndex];
+   
+   const location = useLocation();
+
     // Load filters from Firebase on component mount
    useEffect(() => {
   const loadFilters = async () => {
@@ -228,7 +232,11 @@ useEffect(() => {
   return () => unsubscribe();
 }, [hasCompletedPreferences]);
 
-
+ useEffect(() => {
+    if (location.pathname === "/" && isUserLoggedIn) {
+      fetchInitialAnime(auth.currentUser);
+    }
+  }, [location.pathname, isUserLoggedIn]);
 
   const fetchRandomAnime = async (ratedAnimeIds) => {
   console.log('fetchRandomAnime called (fallback)', {
@@ -306,15 +314,25 @@ useEffect(() => {
 Only return JSON in this format: { "title": "Anime Title", "reason": "25-word explanation linking the pick to the user's liked preferences" }`;
 
 
-      const result = await model.generateContent([prompt]);
-      const raw = result.response.text().trim();
-      let rec;
-      try {
-        rec = parseJsonFromText(raw);
-      } catch (err) {
-        console.error('Failed to parse recommendation JSON:', raw);
-        rec = { title: raw, reason: '' };
-      }
+   const result = await model.generateContent([prompt]);
+
+// 1) Log the full response object (headers, status, etc.)
+console.log('💬 personalizedGeminiResult:', result);
+
+// 2) Grab and log the raw text from Gemini
+const raw = (await result.response.text()).trim();
+console.log('💬 personalizedGeminiRawText:', raw);
+
+// 3) After parsing, log the parsed JSON (or fallback)
+let rec;
+try {
+  rec = parseJsonFromText(raw);
+  console.log('💬 personalizedGeminiParsed:', rec);
+} catch (err) {
+  console.error('❗️ Failed to parse recommendation JSON:', raw, err);
+  rec = { title: raw, reason: '' };
+}
+
       tried.add(rec.title);
 
       const searchRes = await fetch(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(rec.title)}`);
